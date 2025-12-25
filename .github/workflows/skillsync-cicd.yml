@@ -1,56 +1,40 @@
-name: skillsync-cicd
+name: Skillsync CI/CD
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch: {}
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    env:
-      DOCKER_IMAGE: khanhyder4/skillsync-backend
-      KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
-
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 18
 
-      - name: Login to Docker Hub run:|echo "${{ secrets.DOCKER_PASSWORD }}" | docker login \ -u "${{ secrets.DOCKER_USERNAME }}" \--password-stdin
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
       - name: Build Docker image
-        working-directory: ./backend
         run: |
-          docker build -t $DOCKER_IMAGE:latest -t $DOCKER_IMAGE:${{ github.sha }} .
+          docker build -t khanhyder4/skillsync-backend:latest ./backend
 
       - name: Push Docker image
         run: |
-          docker push $DOCKER_IMAGE:latest
-          docker push $DOCKER_IMAGE:${{ github.sha }}
+          docker push khanhyder4/skillsync-backend:latest
 
-      - name: Write kubeconfig from secret
+      - name: Set up kubeconfig
         run: |
-          mkdir -p $HOME/.kube
-          echo "$KUBE_CONFIG_DATA" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > ~/.kube/config
 
-      - name: Install kubectl
+      - name: Deploy to Kubernetes
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-
-      - name: Apply Kubernetes manifests
-        run: |
-          kubectl apply -f k8s/
-
-      - name: Show pods status
-        run: |
-          kubectl get pods -o wide
+          kubectl rollout restart deployment skillsync-backend
