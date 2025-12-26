@@ -1,4 +1,4 @@
-name: Skillsync CI/CD
+name: Test CI
 
 on:
   push:
@@ -6,35 +6,8 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Login to Docker Hub
-        run: |
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-
-      - name: Build Docker image
-        run: |
-          docker build -t khanhyder4/skillsync-backend:latest ./backend
-
-      - name: Push Docker image
-        run: |
-          docker push khanhyder4/skillsync-backend:latest
-
-      - name: Set up kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 --decode > ~/.kube/config
-
-      - name: Deploy to Kubernetes
-        run: |
-          kubectl rollout restart deployment skillsync-backend
+      - name: Say hello
+        run: echo "CI is working"
